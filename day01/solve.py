@@ -29,7 +29,7 @@ def part1(s: str):
         # print(curr)
         if curr == 0:
             count += 1
-    print("part1: ", count)
+    return count
 
 
 def part2(s: str):
@@ -43,28 +43,40 @@ def part2(s: str):
             continue
         before = curr
         n = int(s[1:])
+        if n > 100:
+            count += n // 100
+            n = n % 100
+
         if s[0] == "L":
             curr -= n
         else:
             curr += n
-        if before != 0 and curr < 0 or curr > 100:
+
+        if curr % 100 == 0:
             count += 1
+        # went over 0
+        if curr < 0 or curr > 100:
+            # if we started not on 0
+            if before != 0:
+                count += 1
         curr = curr % 100
-        if curr == 0:
-            count += 1
-        if n > 100:
-            count += n // 100
         # print(s, curr, count)
-    print("part2: ", count)
+    return count
+
+
+assert part1(example) == 3
+assert part2(example) == 6
+assert part2("L100") == 1
+assert part2("L50") == 1
+assert part2("L150") == 2
+assert part2("R1000") == 10
+assert part2("R100") == 1
+assert part2("L50\nR100") == 2
+assert part2("L51\nR2\nL3\nR2") == 4
 
 
 if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) == 1:
-        with open("day1-in.txt") as f:
-            input = f.read()
-    else:
-        input = example
-    part1(input)
-    part2(input)
+    with open("day1-in.txt") as f:
+        input = f.read()
+    print("part1: ", part1(input))
+    print("part2: ", part2(input))
