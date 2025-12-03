@@ -10,7 +10,7 @@ run DAY:
 
 create DAY:
   just load {{DAY}}
-  cp day01/solve.py day{{DAY}}/
+  cat template.py | sed 's/|DAY|/{{DAY}}/g' >day{{DAY}}/solve.py
   git add day{{DAY}}
 
 code DAY:
