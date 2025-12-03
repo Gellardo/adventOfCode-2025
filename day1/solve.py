@@ -76,7 +76,7 @@ assert part2("L51\nR2\nL3\nR2") == 4
 
 
 if __name__ == "__main__":
-    with open("day1-in.txt") as f:
+    with open("day1/input.txt") as f:
         input = f.read()
     print("part1: ", part1(input))
     print("part2: ", part2(input))

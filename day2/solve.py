@@ -7,9 +7,7 @@ def enumerate_range(start, stop):
 
 
 def part1(s: str):
-    ranges = [
-        (int(r.split("-")[0]), int(r.split("-")[1])) for r in s.strip().split(",")
-    ]
+    ranges = [tuple((int(n) for n in r.split("-"))) for r in s.strip().split(",")]
     sum = 0
 
     for r in ranges:
@@ -47,7 +45,7 @@ assert part2(example) == 4174379265
 
 
 if __name__ == "__main__":
-    with open("input.txt") as f:
+    with open("day2/input.txt") as f:
         input = f.read()
     print("part1: ", part1(input))
     print("part2: ", part2(input))
