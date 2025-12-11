@@ -6,12 +6,13 @@ example = """
 
 from dataclasses import dataclass
 from typing import LiteralString
+import math
 
 
 @dataclass
 class Machine:
     lights: int
-    toggles: list[int]
+    toggles: list[list[int]]
     joltage: list[int]
 
     def __init__(self, s):
@@ -19,7 +20,7 @@ class Machine:
         (toggles, joltage) = rest.split("{")
 
         toggles = [
-            indices2bits(list(map(int, toggle[1:-1].split(","))))
+            list(map(int, toggle[1:-1].split(",")))
             for toggle in toggles.strip().split(" ")
         ]
 
@@ -50,7 +51,15 @@ def indices2bits(indices):
 assert indices2bits([0, 1, 4]) == 2**0 + 2**1 + 2**4
 
 
+def indices2list(indices):
+    return [1 if i in indices else 0 for i in range(max(indices) + 1)]
+
+
+assert indices2list([0, 1, 4]) == [1, 1, 0, 0, 1]
+
+
 def find_shortest(goal, options):
+    options = [indices2bits(option) for option in options]
     shortest = {0: 0}
     visited = set()
     steps, current = min(((shortest[k], k) for k in shortest if k not in visited))
@@ -64,20 +73,15 @@ def find_shortest(goal, options):
     return steps
 
 
-def joltage2hash(joltage):
-    """My max joltage is 271, so base300 works, it's just unreadable"""
-    return list2base(joltage, base=300)
-
-
-def hash2joltage(hash):
-    return base2list(hash, base=300)
-
-
 def list2base(l, base):
     number = 0
     for bit in reversed(l):
-        number = 300 * number + bit
+        number = base * number + bit
     return number
+
+
+assert list2base([1, 0, 1, 1], base=2) == 2**0 + 2**2 + 2**3
+assert list2base([1, 0, 2, 1], base=3) == 3**0 + 2 * 3**2 + 3**3
 
 
 def base2list(number, base):
@@ -88,61 +92,81 @@ def base2list(number, base):
     return l
 
 
-def acceptable_joltage(current, goal):
-    # print("acceptable?", hash2joltage(current), hash2joltage(goal), end=" ")
-    while current > 0:
-        if current % 300 > goal % 300:
-            # print("false")
-            return False
+assert base2list(list2base([1, 2, 1, 1, 3], base=4), base=4) == [1, 2, 1, 1, 3]
+
+
+def joltage2hash(joltage):
+    """My max joltage is 271, so base300 works, it's just unreadable"""
+    return list2base(joltage, base=300)
+
+
+def hash2joltage(hash):
+    return base2list(hash, base=300)
+
+
+def estimate_distance(current, goal):
+    estimate = 0
+    while goal > 0:
+        dist = goal % 300 - current % 300
+        if dist < 0:
+            return -1
+        estimate += dist
+
         current //= 300
         goal //= 300
-    # print("true")
-    return True
+    return estimate
 
 
-# print(joltage2hash([2, 4, 6, 1]))
-# print(hash2joltage(joltage2hash([2, 4, 6, 1])))
+assert estimate_distance(joltage2hash([1, 2, 3]), joltage2hash([2, 4, 6])) == 1 + 2 + 3
+assert estimate_distance(joltage2hash([1, 2, 3]), joltage2hash([0, 2, 3])) == -1
+
+
 assert hash2joltage(joltage2hash([2, 4, 6, 1])) == [2, 4, 6, 1]
 
 
 def find_joltage(goal, options):
-    print(f"{goal=} -> {joltage2hash(goal)}")
+    # print(f"{goal=} -> {joltage2hash(goal)}")
     goal = joltage2hash(goal)
-    print(f"{joltage2hash([1,0,0,0,0])=}")
-    print(
-        f"{indices2bits([0])=} -> {joltage2hash(base2list(indices2bits([0]), base=2))}"
-    )
-    options = [joltage2hash(base2list(option, base=2)) for option in options]
+    # print(options)
+    options = [joltage2hash(indices2list(option)) for option in options]
+    # print(options)
 
-    shortest = {0: 0}
-    visited = set()
-    steps, current = min(((shortest[k], k) for k in shortest if k not in visited))
+    estimates = {0: estimate_distance(0, goal)}
+    definitive = {goal: 0}
 
-    while current != goal:
-        visited.add(current)
-        print("  current:", current, shortest)
+    iterations = 0
+    while 0 not in definitive:
+        iterations += 1
+        _, current = min(((estimates[k], k) for k in estimates if k not in definitive))
+        # print(f"  {current=} {len(estimates)=} {len(definitive)=}")
+        change = False
         for option in options:
-            print("    checking", option, hash2joltage(option))
+            # print("    checking", option, hash2joltage(option))
             next = current + option
-            if next not in shortest and acceptable_joltage(next, goal):
-                print("accepted", hash2joltage(next), hash2joltage(goal))
-                shortest[next] = steps + 1
+            if next in definitive:
+                if definitive[next] < estimates[current]:
+                    definitive[current] = definitive[next] + 1
+                    del estimates[current]
+                    # print(f"found shortest for {current}")
+                    break
+                else:
+                    assert False, "this should never happen"
+            elif next not in estimates:
+                if estimate_distance(next, goal) > 0:
+                    estimates[next] = estimate_distance(next, goal)
+                    change = True
 
-        steps, current = min(((shortest[k], k) for k in shortest if k not in visited))
-    print(f">>> {steps=}")
-    return steps
+            if next in estimates and estimates[next] + 1 < estimates[current]:
+                estimates[current] = estimates[next] + 1
+                change = True
+            if not change:
+                estimates[current] = estimates[0] + 1
+    print(f">>> {definitive[0]=}, {iterations=}, {len(estimates)=}, {len(definitive)=}")
+    return definitive[0]
 
 
-find_joltage(
-    [1, 0, 0, 1, 0],
-    [indices2bits([0]), indices2bits([3])],
-)
-find_joltage(
-    [1, 2, 3, 4, 5],
-    [indices2bits([0, 1, 2, 3, 4]), indices2bits([0, 1, 2]), indices2bits([3, 4])],
-)
-assert find_joltage([0, 1, 2, 0], [indices2bits([1]), indices2bits([2])]) == 3
-assert find_joltage([0, 1, 2, 0], [indices2bits([1, 2]), indices2bits([2])]) == 2
+assert find_joltage([0, 1, 2, 0], [[1], [2]]) == 3
+assert find_joltage([0, 1, 2, 1], [[1, 2], [2, 3]]) == 2
 
 
 def part1(s: str):
@@ -151,7 +175,7 @@ def part1(s: str):
     min_toggles = [
         find_shortest(machine.lights, machine.toggles) for machine in machines
     ]
-    print(min_toggles)
+    # print(min_toggles)
     return sum(min_toggles)
 
 
@@ -162,7 +186,7 @@ def part2(s: str):
     min_toggles = [
         find_joltage(machine.joltage, machine.toggles) for machine in machines
     ]
-    print(min_toggles)
+    # print(min_toggles)
     return sum(min_toggles)
 
 
