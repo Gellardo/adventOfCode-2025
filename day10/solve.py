@@ -149,9 +149,7 @@ def find_joltage(goal, options):
                     del estimates[current]
                     # print(f"found shortest for {current}")
                     break
-                else:
-                    assert False, "this should never happen"
-            elif next not in estimates:
+            elif next not in estimates and next not in definitive:
                 if estimate_distance(next, goal) > 0:
                     estimates[next] = estimate_distance(next, goal)
                     change = True
@@ -159,8 +157,16 @@ def find_joltage(goal, options):
             if next in estimates and estimates[next] + 1 < estimates[current]:
                 estimates[current] = estimates[next] + 1
                 change = True
-            if not change:
-                estimates[current] = estimates[0] + 1
+            if next in estimates and estimates[next] > estimates[current] + 1:
+                estimates[next] = estimates[current] + 1
+                change = True
+        if current in estimates and not change:
+            definitive[current] = estimates[0] + 1
+            del estimates[current]
+        if iterations % 500 == 0:
+            print(
+                f"    {estimates[0]=}, {iterations=}, {len(estimates)=}, {len(definitive)=}"
+            )
     print(f">>> {definitive[0]=}, {iterations=}, {len(estimates)=}, {len(definitive)=}")
     return definitive[0]
 
