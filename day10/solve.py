@@ -128,47 +128,35 @@ def find_joltage(goal, options):
     # print(f"{goal=} -> {joltage2hash(goal)}")
     goal = joltage2hash(goal)
     # print(options)
-    options = [joltage2hash(indices2list(option)) for option in options]
+    options = [
+        joltage2hash(indices2list(option))
+        for option in sorted(options, key=lambda o: -len(o))  # try most-reducing first
+    ]
     # print(options)
 
-    estimates = {0: estimate_distance(0, goal)}
-    definitive = {goal: 0}
+    shortest = {goal: 0}
+    path = [0]
 
-    iterations = 0
-    while 0 not in definitive:
-        iterations += 1
-        _, current = min(((estimates[k], k) for k in estimates if k not in definitive))
-        # print(f"  {current=} {estimates=} {len(definitive)=}")
-        change = False
-        for option in options:
-            # print("    checking", option, hash2joltage(option))
-            next = current + option
-            if next in definitive:
-                if definitive[next] < estimates[current]:
-                    definitive[current] = definitive[next] + 1
-                    del estimates[current]
-                    # print(f"found shortest for {current}")
-                    break
-            elif next not in estimates and next not in definitive:
-                if estimate_distance(next, goal) > 0:
-                    estimates[next] = estimate_distance(next, goal)
-                    change = True
+    def dfs(path, shortest):
+        current = path[-1]
+        # print(f"{current=}")
+        if estimate_distance(current, goal) < 0:
+            shortest[current] = estimate_distance(0, goal) + 1
+            return
 
-            if next in estimates and estimates[next] + 1 < estimates[current]:
-                estimates[current] = estimates[next] + 1
-                change = True
-            if next in estimates and estimates[next] > estimates[current] + 1:
-                estimates[next] = estimates[current] + 1
-                change = True
-        if current in estimates and not change:
-            definitive[current] = estimates[0] + 1
-            del estimates[current]
-        if iterations % 500 == 0:
-            print(
-                f"    {estimates[0]=}, {iterations=}, {len(estimates)=}, {len(definitive)=}"
-            )
-    print(f">>> {definitive[0]=}, {iterations=}, {len(estimates)=}, {len(definitive)=}")
-    return definitive[0]
+        next = [current + option for option in options]
+        for n in next:
+            if n in shortest:
+                continue
+            path.append(n)
+            dfs(path, shortest)
+            path.pop()
+        shortest[current] = min([shortest[n] for n in next]) + 1
+
+    dfs(path, shortest)
+    print(f" {shortest[0]=}, {len(shortest)=}")
+
+    return shortest[0]
 
 
 assert find_joltage([0, 1, 2, 0], [[1], [2]]) == 3

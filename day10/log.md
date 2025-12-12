@@ -13,3 +13,5 @@ Debugging shows that my estimates explode but nothing reached the definitive ste
 Found a test-case where going down the "best" road lead to a dead end, for which it breaks down completely.
 Trying explicit depth-first search next, hopefully less error-prone.
 I'm already thinking that this could easier be solved via linear algebra, but I really want the graph algorithms to work.
+It seems to work alright but also  20x iterations for my first machine.
+Second machine was stopped after a few minutes, showing it still is far too slow.
