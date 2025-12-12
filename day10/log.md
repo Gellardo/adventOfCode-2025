@@ -15,3 +15,6 @@ Trying explicit depth-first search next, hopefully less error-prone.
 I'm already thinking that this could easier be solved via linear algebra, but I really want the graph algorithms to work.
 It seems to work alright but also  20x iterations for my first machine.
 Second machine was stopped after a few minutes, showing it still is far too slow.
+
+Another try, which felt different but in hindsight is also just a DFS search, just skipping ahead on using the same toggle multiple times.
+Still the same problem, exploding state-space, no results for quite a while.

@@ -7,6 +7,7 @@ example = """
 from dataclasses import dataclass
 from typing import LiteralString
 import math
+from random import random
 
 
 @dataclass
@@ -125,35 +126,56 @@ assert hash2joltage(joltage2hash([2, 4, 6, 1])) == [2, 4, 6, 1]
 
 
 def find_joltage(goal, options):
-    # print(f"{goal=} -> {joltage2hash(goal)}")
+    print(f"{goal=} -> {joltage2hash(goal)}")
     goal = joltage2hash(goal)
     # print(options)
     options = [
         joltage2hash(indices2list(option))
         for option in sorted(options, key=lambda o: -len(o))  # try most-reducing first
     ]
+    inf = estimate_distance(0, goal)
     # print(options)
 
     shortest = {goal: 0}
-    path = [0]
 
-    def dfs(path, shortest):
-        current = path[-1]
+    def dfs(current, shortest, options, indent=""):
+        # print(f"{indent}dfs: {hash2joltage(current)=}")
         # print(f"{current=}")
+        if current in shortest:
+            return
+        if len(options) == 0:
+            shortest[current] = inf
+            return
         if estimate_distance(current, goal) < 0:
-            shortest[current] = estimate_distance(0, goal) + 1
+            shortest[current] = inf
             return
 
-        next = [current + option for option in options]
-        for n in next:
-            if n in shortest:
-                continue
-            path.append(n)
-            dfs(path, shortest)
-            path.pop()
-        shortest[current] = min([shortest[n] for n in next]) + 1
+        option = options[0]
+        options = options[1:]
+        option_multiples = [(current, 0)]
+        while estimate_distance(option_multiples[-1][0], goal) > 0:
+            next = option_multiples[-1][0] + option
+            if estimate_distance(next, goal) < 0:
+                break
+            option_multiples.append((next, len(option_multiples)))
 
-    dfs(path, shortest)
+        next_shortest = inf
+        next_m = inf
+        # print(f"{indent}options: {option_multiples=}")
+        for multiple, m in reversed(option_multiples):
+            # print(f"{indent} trying {hash2joltage(multiple)=}")
+            next = multiple
+            dfs(next, shortest, options, indent=indent + "  ")
+            if next in shortest and shortest[next] <= next_shortest:
+                next_shortest = shortest[next]
+                next_m = m
+        assert next_m != inf
+        shortest[current] = next_shortest + next_m
+        # print(f"{indent}shortest: {shortest=}")
+        if random() < 0.0001:
+            print(f"d: {len(shortest)=}, {len(options)=}")
+
+    dfs(0, shortest, options)
     print(f" {shortest[0]=}, {len(shortest)=}")
 
     return shortest[0]
