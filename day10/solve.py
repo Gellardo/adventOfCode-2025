@@ -138,7 +138,7 @@ def find_joltage(goal, options):
     while 0 not in definitive:
         iterations += 1
         _, current = min(((estimates[k], k) for k in estimates if k not in definitive))
-        # print(f"  {current=} {len(estimates)=} {len(definitive)=}")
+        # print(f"  {current=} {estimates=} {len(definitive)=}")
         change = False
         for option in options:
             # print("    checking", option, hash2joltage(option))
@@ -173,6 +173,7 @@ def find_joltage(goal, options):
 
 assert find_joltage([0, 1, 2, 0], [[1], [2]]) == 3
 assert find_joltage([0, 1, 2, 1], [[1, 2], [2, 3]]) == 2
+assert find_joltage([5, 5, 5, 5], [[0, 1, 2], [0, 1], [2, 3]]) == 10
 
 
 def part1(s: str):
