@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.14"
+# dependencies = [
+#     "z3-solver",
+# ]
+# ///
 example = """
 [.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
 [...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}
@@ -69,144 +75,25 @@ from typing import Dict, Self
 import logging
 from logging import debug, info, warning, error
 
-
-@dataclass
-class Equation:
-    """
-    Represents a single equation, f_1 * x_1 + f_2 * x_2 + ... = j.
-    """
-
-    factors: Dict[int, int]
-    joltage: int
-
-    def solve(self, values):
-        to_solve = set(self.factors).difference(values.keys())
-        if len(to_solve) > 1:
-            raise Exception("Can't solve, because there are at least 2 unknown values")
-        sum_left = 0
-        for x_i in values:
-            factor = self.factors[x_i] if self.has_factor(x_i) else 0
-            sum_left += values[x_i] * factor
-        remainder = self.joltage - sum_left
-        if len(to_solve) == 0 and remainder != 0:
-            raise Exception(
-                f"values do not produce valid equation {self.joltage=} != {sum_left}"
-            )
-        elif len(to_solve) == 1:
-            return {to_solve.pop(): remainder}
-        else:
-            return {}
-
-    def has_factor(self, i):
-        return i in self.factors
-
-    def factor(self, i):
-        return self.factors[i] if i in self.factors else 0
-
-    def check_valid(self, values):
-        return len(self.solve(values)) == 0
-
-    def eliminate(self, other: Self, i):
-        if not other.has_factor(i):
-            raise Exception(
-                "can't eliminate factor_i if other Equation does not have a corresponding factor"
-            )
-        if not self.has_factor(i):
-            return
-        mult = int(self.factors[i] / other.factors[i])
-        factors = set(self.factors).union(set(other.factors))
-        for factor in factors:
-            self_f = self.factor(factor)
-            other_f = other.factor(factor)
-            new_f = self_f - mult * other_f
-
-            self.factors[factor] = new_f
-        self.joltage = self.joltage - mult * other.joltage
-
-        to_delete = [factor for factor in self.factors if self.factors[factor] == 0]
-        for factor in to_delete:
-            del self.factors[factor]
+from z3 import *
 
 
-def test_Equation_eliminate():
-    eq = Equation({0: 1, 2: 1}, 5)
-    eq.eliminate(Equation({0: 1}, 3), 0)
-    assert eq.joltage == 2
-    assert eq.factors[2] == 1
-
-    eq = Equation({0: 1, 2: 1}, 5)
-    eq.eliminate(Equation({0: 1, 1: 1}, 3), 0)
-    assert eq.factors == {1: -1, 2: 1}
-    assert eq.joltage == 2
-
-    """
-    - x     + z = 5
-      x + y     = 3 (*-1)
-    ----------
-          y + z = 8
-    """
-    eq = Equation({0: -1, 2: 1}, 5)
-    eq.eliminate(Equation({0: 1, 1: 1}, 3), 0)
-    assert eq.factors == {1: 1, 2: 1}
-    assert eq.joltage == 8
-
-
-def test_Equation_solve():
-    assert Equation({0: 1, 2: 1}, 5).solve({2: 5}) == {0: 0}
-    assert Equation({0: 1, 2: 1}, 5).solve({1: 2, 2: 3}) == {0: 2}
-
-    import pytest
-
-    with pytest.raises(Exception):
-        Equation({0: 1, 2: 1}, 5).solve({0: 10, 2: 0})
-        Equation({0: 1, 2: 1}, 5).solve({1: 0})
-
-
-def test_Equation_valid():
-    assert Equation({0: 1, 2: 1}, 5).check_valid({0: 2, 1: 10, 2: 3})
-    assert Equation({0: 1, 2: 1}, 5).check_valid({0: 10}) == False
-
-
-def find_joltage(joltage, toggles):
-    equations = []
-    info(f"starting point: {joltage=}, {toggles=}")
+def find_joltage(joltage, toggles) -> int:
+    debug(f"optimizing {joltage=} {toggles=}")
+    solver = Optimize()
+    vars = [Int(j) for j in range(len(toggles))]
+    [solver.add(v >= 0) for v in vars]
     for i in range(len(joltage)):
-        eq = Equation({j: 1 for j, t in enumerate(toggles) if i in t}, joltage[i])
-        if eq not in equations:
-            equations.append(eq)
-    debug(equations)
+        solver.add(
+            sum([vars[j] for j, t in enumerate(toggles) if i in t]) == joltage[i]
+        )
+    debug(f"full system of equations: {solver}")
+    solver.minimize(sum(vars))
+    debug(f"{solver.check()=}")
+    debug("times to press %s", [solver.model()[var] for var in vars])
+    # return sum([solver.model()[var] for var in vars])
 
-    values = {}
-    solved = []
-    while len(equations) > len(solved):
-        new_solved = False
-        for eq in equations:
-            if eq in solved:
-                continue
-            try:
-                new_values = eq.solve(values)
-                values.update(new_values)
-                if eq.check_valid(values):
-                    debug(f"solved {eq=} with {values=}")
-                    solved.append(eq)
-                    new_solved = True
-            except:
-                pass
-        if new_solved:
-            continue
-
-        unsolved_i = [i for i in range(len(joltage)) if i not in values][0]
-        debug(f"eliminate {unsolved_i=}")
-        related_eqs = [eq for eq in equations if eq.has_factor(unsolved_i)]
-        if len(related_eqs) > 1:
-            for eq in related_eqs[1:]:
-                eq.eliminate(related_eqs[0], unsolved_i)
-
-        # select random unsolved index
-        # eliminate it from all others
-
-    debug(f"final values: {values}")
-    return sum(values.values())
+    return solver.model().eval(sum(vars)).as_long()
 
 
 def part1(s: str):
@@ -219,7 +106,7 @@ def part1(s: str):
     return sum(min_toggles)
 
 
-def part2(s: str):
+def part2(s: str) -> int:
     machines = [Machine(line) for line in s.split("\n")]
     print("max joltage:", max([max(machine.joltage) for machine in machines]))
 

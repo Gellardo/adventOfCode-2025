@@ -6,7 +6,7 @@ r:
   just run $(date "+%-d")
 run DAY:
   [ -f day{{DAY}}/solve.py ] || just create {{DAY}}
-  python3 day{{DAY}}/solve.py
+  uv run day{{DAY}}/solve.py
 
 create DAY:
   just load {{DAY}}
