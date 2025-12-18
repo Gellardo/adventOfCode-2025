@@ -28,15 +28,38 @@ def part1(s: str):
 
 
 def part2(s: str):
-    lines = s.split("\n")
-    return 0
+    points = [list(map(int, line.split(","))) for line in s.split("\n")]
+    starting_points = [[94997, 50126], [94997, 48641]]
+    best = [0, 0]
+    best_p = [[], []]
+    for i in range(len(points)):
+        above = points[i][1] - starting_points[1][1]
+        if 0 > above > -14300:
+            size = (abs(points[i][0] - starting_points[1][0]) + 1) * (
+                abs(points[i][1] - starting_points[1][1]) + 1
+            )
+            if size > best[1]:
+                best[1] = size
+                best_p[1] = [points[i], starting_points[1]]
+    for i in range(len(points)):
+        below = points[i][1] - starting_points[0][1]
+        if 0 < below < 17000:
+            size = (abs(points[i][0] - starting_points[0][0]) + 1) * (
+                abs(points[i][1] - starting_points[0][1]) + 1
+            )
+            if size > best[0]:
+                best[0] = size
+                best_p[0] = [points[i], starting_points[0]]
 
-
-assert part1(example) == 50
-assert part2(example) == 0
+    print(best)
+    print(best_p)
+    return max(best)
 
 
 if __name__ == "__main__":
+    assert part1(example) == 50
+    # assert part2(example) == 24
+
     with open("day9/input.txt") as f:
         input = f.read().strip()
     print("part1: ", part1(input))
