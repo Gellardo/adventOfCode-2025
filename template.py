@@ -1,5 +1,7 @@
+import logging
+from logging import info, debug
+
 example = """
-paste here
 """.strip()
 
 
@@ -13,12 +15,28 @@ def part2(s: str):
     return 0
 
 
-assert part1(example) == 0
-assert part2(example) == 0
-
-
 if __name__ == "__main__":
-    with open("day|DAY|/input.txt") as f:
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", action="count", default=0)
+    args = parser.parse_args()
+
+    # Set log level based on flags
+    if args.verbose == 0:
+        level = logging.ERROR
+    elif args.verbose == 1:
+        level = logging.WARNING
+    elif args.verbose == 2:
+        level = logging.INFO
+    else:
+        level = logging.DEBUG
+    logging.basicConfig(level=level, format="%(levelname)s: %(message)s")
+
+    assert part1(example) == 0
+    assert part2(example) == 0
+
+    with open("day12/input.txt") as f:
         input = f.read().strip()
     print("part1: ", part1(input))
     print("part2: ", part2(input))
